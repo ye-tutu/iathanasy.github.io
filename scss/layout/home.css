@@ -1,0 +1,18 @@
+.container.home-index .article-content--inner img {
+  max-width: 300px !important; }
+
+.container.home-index .pc-view {
+  display: block; }
+
+.container.home-index .article-meta .pc-view {
+  display: inline-block; }
+
+.container.home-index .mobile-view {
+  display: none; }
+
+@media (max-width: 768px) {
+  .container.home-index .pc-view {
+    display: none !important; }
+  .container.home-index .mobile-view {
+    display: block !important;
+    font-style: italic !important; } }

@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+  
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  <meta name="author" content="董沅鑫, yuanxin.me@gmail.com">
+  
+  
+  
+  <title>Netty 源码解析系列 | 不朽丶</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  
+    <meta name="keywords" content="Java,Netty,">
+  
+
+  <script>
+    console.log('\n%c Hexo-theme-bmw v4.0 ' + '%c 🎉 https://github.com/dongyuanxin/theme-bmw 🎉\n' + '\n%c View demo online ' + '%c 🔍 https://godbmw.com/ 🔍  \n' , 'color: #fadfa3; background: #030307; padding:3px 0;', '', 'color: #fadfa3; background: #030307; padding:3px 0;', '');
+  </script>
+
+  
+    <meta name="description" content="半神半圣亦半仙">
+  
+
+  
+    <link rel="alternate" href="/atom.xml" title="不朽丶" type="application/atom+xml">
+  
+
+  
+    <link rel="icon" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/images/touch-icon.png">
+  
+
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/icon/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script src="/js/util.js"></script>
+<script src="/js/valine.min.js"></script>
+
+  
+
+  
+
+  
+  
+  <script src="//cdn.bootcss.com/jquery/3.3.1/jquery.min.js" async></script>
+  
+  
+    <script src="//cdn.jsdelivr.net/npm/leancloud-storage@3.11.0/dist/av-min.js"></script>
+  
+
+</head>
+
+  <body>
+
+    
+
+    <div id="app">
+
+      <div class="header-wrap">
+  <header>
+    <div class="site-brand">
+      <div class="site-title">
+        <a href="/">不朽丶</a>
+      </div>
+    </div>
+    <nav class="site-navigation">
+      <ul class="nav-menu">
+      
+        <li class="nav-item" data-path="/">
+          
+            <a 
+              href="/"
+              target="_self"
+            >
+              主页
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          
+            <a 
+              href="/archives/"
+              target="_self"
+            >
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          
+            <a 
+              href="/tags/"
+              target="_self"
+            >
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          
+            <a 
+              href="/about/"
+              target="_self"
+            >
+              关于
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/rest/">
+          
+            <a 
+              href="/html/rest/"
+              target="_blank"
+            >
+              作息
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/laboratory/">
+          
+            <a 
+              href="/html/laboratory/"
+              target="_blank"
+            >
+              实验室
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/md/">
+          
+            <a 
+              href="/html/md/"
+              target="_blank"
+            >
+              MarkDown
+            </a>
+          
+        </li>
+      
+      </ul>
+    </nav>
+    <i class="iconfont icon-menu"></i>
+  </header>
+</div>
+
+<script>
+  let links = document.querySelectorAll('.nav-item');
+  for(let link of links){
+    let childrenLink = link.querySelector('ul');
+    link.addEventListener('mouseenter', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown active";
+      }
+    })
+    link.addEventListener('mouseleave', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown";
+      }
+    })
+  }
+  let rootRealPath = getRealPath(window.location.pathname, true);
+  for(let link of links) {
+    let linkPath = link.getAttribute("data-path");
+    if(linkPath && getRealPath(linkPath, true) === rootRealPath) {
+      link.className = "nav-item hover";
+    }
+  }
+
+  let iconMenu = document.querySelector("i.iconfont.icon-menu"),
+    iconMenuClicked = false;
+  let navDOM = document.querySelector("nav.site-navigation");
+  iconMenu.addEventListener("click", () => {
+    iconMenuClicked 
+      ? navDOM.className = "site-navigation active"
+      : navDOM.className = "site-navigation";
+    iconMenuClicked = !iconMenuClicked;
+  })
+</script>
+
+      
+
+
+
+
+
+
+
+
+<div class="container post-index">
+
+  
+
+<div class="post">
+  <h1 class="article-title">
+    <span>Netty 源码解析系列</span>
+  </h1>
+  <div class="article-top-meta">
+    <span>
+      发布 : 
+      2020-09-19
+    </span>
+    
+    
+      <span>
+        浏览 : <span class="article-timer" data-identity="Netty+源码解析系列"></span>
+      </span>
+    
+  </div>
+
+  
+
+  <div class="article-content">
+    <div class="markdown-body">
+      <p>2019-04-08 更新：为了增强该文章的可读性，我重新梳理了一遍，更新了少量内容，并且将原来长长的文章拆分为多篇文章，这样有利于读者阅读，也方便读者进行互动。</p>
+<p>我将原来的文章拆分为了以下九篇文章，基本上每篇都很短，很快就可以看完一篇了。希望大家不要再将该文章放到收藏夹了，从现在开始阅读吧。</p>
+<p>当前 =&gt; Netty 源码解析（一）: 开始</p>
+<p><a href="/post/netty-part-2">Netty 源码解析（二）: Netty 的 Channel</a></p>
+<p><a href="/post/netty-part-3">Netty 源码解析（三）: Netty 的 Future 和 Promise</a></p>
+<p><a href="/post/netty-part-4">Netty 源码解析（四）: Netty 的 ChannelPipeline</a></p>
+<p><a href="/post/netty-part-5">Netty 源码解析（五）: Netty 的线程池分析</a></p>
+<p><a href="/post/netty-part-6">Netty 源码解析（六）: Channel 的 register 操作</a></p>
+<p><a href="/post/netty-part-7">Netty 源码解析（七）: NioEventLoop 工作流程</a></p>
+<p><a href="/post/netty-part-8">Netty 源码解析（八）: 回到 Channel 的 register 操作</a></p>
+<p><a href="/post/netty-part-9">Netty 源码解析（九）: connect 过程和 bind 过程分析</a></p>
+<hr>
+<p>本文又是一篇源码分析文章，其实除了 Doug Lea 的并发包源码，我是真不太爱写源码分析。因为要花非常多的时间，而且很多地方需要反复组织语言。</p>
+<p>本文将介绍 Netty，Java 平台上使用最广泛的 NIO 包，它是对 JDK 中的 NIO 实现的一层封装，让我们能更方便地开发 NIO 程序。其实，Netty 不仅仅是 NIO 吧，但是，基本上大家都冲着 NIO 来的。</p>
+<p>个人感觉国内对于 Netty 的吹嘘是有点过了，主要是很多人靠它吃饭，要么是搞培训的，要么是出书的，恨不得把 Netty 吹上天去，这种现象也是挺不好的，反而使得初学者觉得 Netty 是什么高深的技术一样。</p>
+<p>Netty 的源码不是很简单，因为它比较多，而且各个类之间的关系错综复杂，很多人说它的源码很好，这点我觉得一般，真要说好代码，还得 Doug Lea 的并发源码比较漂亮，一行行都是精华，不过它们是不同类型的，也没什么好对比的。Netty 源码好就好在它的接口使用比较灵活，往往接口好用的框架，源码都不会太简单。</p>
+<p>本文将立足于源码分析，所以读者需要先掌握 NIO 的基础知识，至少我之前写的 <a href="https://www.javadoop.com/post/java-nio" target="_blank" rel="noopener">《Java NIO：Buffer、Channel 和 Selector》</a> 中介绍的基础知识要清楚，如果读者已经对 Netty 有些了解，或者使用过，那就更好了。</p>
+<ul>
+<li>本文只介绍 TCP 相关的内容，Netty 对于其他协议的支持，不在本文的讨论范围内。</li>
+<li>和并发包的源码分析不一样，我不可能一行一行源码说，所以有些异常分支是会直接略过，除非我觉得需要介绍。</li>
+<li>Netty 源码一直在更新，各版本之间有些差异，我是按照 2018-09-06 的最新版本 <strong>4.1.25.Final</strong> 来进行介绍的。</li>
+</ul>
+<p>建议初学者在看完本文以后，可以去翻翻《Netty In Action》，网上也可以找到中文文字版的。</p>
+<!-- toc -->
+<h2 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h2><p>学习源码，一开始肯定是准备环境。</p>
+<p>我喜欢用 maven，也喜欢 Spring Boot，所以我一般先到 <a href="https://start.spring.io/" target="_blank" rel="noopener">https://start.spring.io/</a> 准备一个最简单的脚手架。</p>
+<p>10 秒搞定脚手架，然后就是导入到 Intellij 中，如果用新版本的 Spring Boot，可能还需要等待下载依赖，期间打开 <a href="https://mvnrepository.com/" target="_blank" rel="noopener">https://mvnrepository.com/</a> 搜索马上要用到的 maven 依赖。</p>
+<p>Netty 分为好些模块，有 <a href="https://mvnrepository.com/artifact/io.netty/netty-handler" target="_blank" rel="noopener">netty-handler</a>、<a href="https://mvnrepository.com/artifact/io.netty/netty-buffer" target="_blank" rel="noopener">netty-buffer</a>、<a href="https://mvnrepository.com/artifact/io.netty/netty-transport" target="_blank" rel="noopener">netty-transport</a>、<a href="https://mvnrepository.com/artifact/io.netty/netty-common" target="_blank" rel="noopener">netty-common</a> 等等，也有一个 <a href="https://mvnrepository.com/artifact/io.netty/netty-all" target="_blank" rel="noopener">netty-all</a>，它包含了所有的模块。</p>
+<p>既然我们是源码分析，那么自然是用一个最简单的。netty-all 不是最好的选择，netty-example 才是：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.netty<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>netty-example<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">version</span>&gt;</span>4.1.25.Final<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>它不仅可以解决我们的依赖，而且 example 里面的示例非常适合我们学习使用。</p>
+<h2 id="Echo-例子"><a href="#Echo-例子" class="headerlink" title="Echo 例子"></a>Echo 例子</h2><p>Netty 作为 NIO 的库，自然既可以作为服务端接受请求，也可以作为客户端发起请求。使用 Netty 开发客户端或服务端都是非常简单的，Netty 做了很好的封装，我们通常只要开发一个或多个 <strong>handler</strong> 用来处理我们的自定义逻辑就可以了。</p>
+<p>下面，我们来看一个经常会见到的例子，它叫 <strong>Echo</strong>，也就是<strong>回声</strong>，客户端传过去什么值，服务端原样返回什么值。</p>
+<blockquote>
+<p>打开 netty-example 的源码，把 <code>echo</code> 包下面的代码复制出来玩一玩。</p>
+</blockquote>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/5.png" alt="5"></p>
+<blockquote>
+<p>左边是服务端代码，右边是客户端代码。</p>
+</blockquote>
+<p>上面的代码基本就是模板代码，每次使用都是这一个套路，唯一需要我们开发的部分是 handler(…) 和 childHandler(…) 方法中指定的各个 handler，如 <strong>EchoServerHandler</strong> 和 <strong>EchoClientHandler</strong>，当然 Netty 源码也给我们提供了很多的 handler，比如上面的 LoggingHandler，它就是 Netty 源码中为我们提供的，需要的时候直接拿过来用就好了。</p>
+<p>我们先来看一下上述代码中涉及到的一些内容：</p>
+<ul>
+<li><p>ServerBootstrap 类用于创建服务端实例，Bootstrap 用于创建客户端实例。</p>
+</li>
+<li><p>两个 EventLoopGroup：bossGroup 和 workerGroup，它们涉及的是 Netty 的线程模型，可以看到服务端有两个 group，而客户端只有一个，它们就是 Netty 中的线程池。</p>
+</li>
+<li><p>Netty 中的 Channel，没有直接使用 Java 原生的 ServerSocketChannel 和 SocketChannel，而是包装了 NioServerSocketChannel 和 NioSocketChannel 与之对应。</p>
+<blockquote>
+<p>当然，也有对其他协议的支持，如支持 UDP 协议的 NioDatagramChannel，本文只关心 TCP 相关的。</p>
+</blockquote>
+</li>
+<li><p>左边 handler(…) 方法指定了一个 handler（LoggingHandler），这个 handler 是给服务端收到新的请求的时候处理用的。右边 handler(…) 方法指定了客户端处理请求过程中需要使用的 handlers。</p>
+<blockquote>
+<p>如果你想在 EchoServer 中也指定多个 handler，也可以像右边的 EchoClient 一样使用 ChannelInitializer</p>
+</blockquote>
+</li>
+<li><p>左边 childHandler(…) 指定了 childHandler，这边的 handlers 是给新创建的连接用的，我们知道服务端 ServerSocketChannel 在 accept 一个连接以后，需要创建 SocketChannel 的实例，childHandler(…) 中设置的 handler 就是用于处理新创建的 SocketChannel 的，而不是用来处理 ServerSocketChannel 实例的。</p>
+</li>
+<li><p>pipeline：handler 可以指定多个（需要上面的 ChannelInitializer 类辅助），它们会组成了一个 pipeline，它们其实就类似拦截器的概念，现在只要记住一点，每个 NioSocketChannel 或 NioServerSocketChannel 实例内部都会有一个 pipeline 实例。pipeline 中还涉及到 handler 的执行顺序。</p>
+</li>
+<li><p>ChannelFuture：这个涉及到 Netty 中的异步编程，和 JDK 中的 Future 接口类似。</p>
+</li>
+</ul>
+<p>对于不了解 Netty 的读者，也不要有什么压力，我会一一介绍它们，本文主要面向新手，我觉得比较难理解或比较重要的部分，会花比较大的篇幅来介绍清楚。</p>
+<p>上面的源码中没有展示消息发送和消息接收的处理，此部分我会在介绍完上面的这些内容以后再进行介绍。</p>
+<p>下面，将分块来介绍这些内容。鉴于读者对 NIO 或 Netty 的了解程度可能参差不齐，为了照顾初学者，很多地方需要啰嗦一些，所以希望读者一节一节往下看，对于自己熟悉的内容可以适当看快一些。</p>
+
+    </div>
+  </div>
+  
+    <div class="copy-right">
+      <div class="markdown-body">
+        <blockquote>
+        
+        
+          本文作者 : iathanasy <br/>
+        
+        原文链接 : <a href="">https://iathanasy.github.io/2020/09/19/Netty+源码解析系列/</a><br>
+        版权声明 : 本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！
+        </blockquote>
+      </div>
+    </div>
+  
+  
+  
+
+  
+
+  <div class="article-footer">
+    <div class="article-meta pull-left">
+      <span>
+        
+          <i class="iconfont icon-06tags"></i>标签: 
+          
+          <span class="span--tag">
+            <a href="/tags/Java/">
+              #Java
+            </a>
+          </span>
+          
+          <span class="span--tag">
+            <a href="/tags/Netty/">
+              #Netty
+            </a>
+          </span>
+          
+        
+      </span>
+    </div>
+    <div class="article-meta pull-right">
+    </div>
+  </div>
+</div>
+
+
+  <aside id="sidebar">
+    <p id="sidebar-header"></p>
+    <ol id="sidebar-toc"></ol>
+  </aside>
+  <script async>setTimeout(generateToc, 10);</script>
+
+
+  <nav class="post-navigation">
+    
+      <div class="nav-pre">
+        <i class="iconfont icon-prev"></i>
+        上一篇:
+        <a href="/2020/03/08/Java队列/" target="_self">Java队列</a>
+      </div>
+    
+    
+      <div class="nav-next">
+        下一篇:
+        <a href="/2020/09/19/Netty+源码解析（二）+-+Netty+中的+Channel/" target="_self">Netty 源码解析（二） - Netty 中的 Channel</a>
+        <i class="iconfont icon-next"></i>
+      </div>
+    
+  </nav>
+
+   
+
+  
+    <script defer>
+const valineAPI = (() => {
+  try {
+    AV.init("Hyq9wkH495DgNHWhDQCOfQSp-gzGzoHsz", "WaR7nrzhliHj9aVwdQzkdlGd");
+  } catch(error) {}
+  const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+      query.equalTo("identity", identity);
+      query.find().then(results => {
+        resolve(results.length > 0);
+      }, error => reject(error));
+    })
+  }
+
+  const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+      let querys = [];
+      for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+      }
+      query = AV.Query.or.apply(null ,querys);
+    } else {
+      identity = identity || getRealPath();
+      query = new AV.Query("Timer");
+      query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+      query.find()
+      .then(results => resolve(results))
+      .catch(error => reject(error))
+    })
+  }
+
+  const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let Todo = AV.Object.extend('Timer');
+      let todo = new Todo();
+      todo.set("times", 1);
+      todo.set("identity", identity);
+      todo.save().then(res => resolve(true), error => reject(error));
+    })
+  }
+
+  const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let query = new AV.Query('Timer');
+      query.equalTo("identity", identity);
+      query.find().then(todos => {
+        todos.forEach(todo => {
+          todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+      }).then(todos => resolve(true), error => reject(error));
+    })
+  }
+
+  return {
+    isExist,
+    _get,
+    update,
+    create
+  }
+})()
+
+const calcAndWriteTimes = () => {
+  let isPost = true;
+
+  let timerAllDOM = document.querySelectorAll(".article-timer");
+
+  if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+      if(exist) {
+        return valineAPI.update(identity);
+      }
+      return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+  }
+
+  let timerDOMCache = {};
+
+  for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+      timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+      timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+      };
+    }
+  }
+
+  let identities = Object.keys(timerDOMCache);
+  valineAPI._get(identities).then(results => {
+    for(let result of results) {
+      let {identity, times} = result.attributes;
+      timerDOMCache[identity].times = times;
+      timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+      if(timerDOMCache[identity].times){
+        continue;
+      }
+      timerDOMCache[identity].dom.map(item => item.innerText = 1);
+      valineAPI.create(identity);
+    }
+  }).catch(error => console.log(error.message))
+}
+
+if(true){
+  calcAndWriteTimes();
+}
+</script>
+   
+
+</div>
+
+
+      <footer>
+  <p class="site-info">
+    博客已运行<span id="time-to-now"></span><span class="my-face">(●'◡'●)ﾉ♥</span>
+    <br>
+    特别鸣谢：
+			<a href="https://github.com/">GitHub</a> |
+			<a href="https://hexo.io">Hexo</a> |
+			<a href="https://github.com/dongyuanxin/theme-bmw">BMW</a> 
+    <br>
+    
+  </p>
+</footer>
+
+
+
+<script>
+const timeToNowDOM = document.querySelector("#time-to-now");
+const startTimestamp = new Date(2019, 0, 7).getTime();
+
+const updateTimeStr = () => {
+  let offset = parseInt(
+      (new Date().getTime() - startTimestamp) / 1000,
+      10
+    ),
+    day = Math.floor(offset / 86400),
+    hour = Math.floor((offset % 86400) / 3600),
+    minute = Math.floor(((offset % 86400) % 3600) / 60),
+    second = Math.floor(((offset % 86400) % 3600) % 60);
+  timeToNowDOM.innerHTML =
+    day + "天" + hour + "小时" + minute + "分钟" + second + "秒";
+  setTimeout(updateTimeStr, 500);
+}
+
+setTimeout(updateTimeStr, 500);
+</script>
+
+
+      <div class="back-to-top hidden">
+  <span>
+    <i class="iconfont icon-60"></i><span></span>%
+  </span>
+</div>
+
+<script>
+const updateIconToTop = percent => {
+  let dom = document.querySelector(".back-to-top span span");
+  dom.innerText = percent;
+  if(percent < 1) {
+    document.querySelector(".back-to-top").className = "back-to-top hidden";
+  } else {
+    document.querySelector(".back-to-top").className = "back-to-top";
+  }
+}
+
+const handleScoll = () => {
+  let isRunning = false;
+  return () => {
+    if (isRunning) return;
+    isRunning = true;
+    window.requestAnimationFrame(timestamp => {
+      let scrollTop =
+          document.documentElement.scrollTop || document.body.scrollTop,
+        scrollHeight =
+          document.documentElement.scrollHeight ||
+          document.body.scrollHeight,
+        clientHeight =
+          document.documentElement.clientHeight ||
+          document.body.clientHeight;
+      isRunning = false;
+      if (scrollTop <= 1) {
+        updateIconToTop(0);
+        return;
+      }
+      if (scrollTop + clientHeight >= scrollHeight) {
+        updateIconToTop(100);
+      } else {
+        updateIconToTop(parseInt(
+          100 * scrollTop / (scrollHeight - clientHeight),
+          10
+        ));
+      }
+    });
+  };
+}
+
+const backToTop = () => {
+  let scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop,
+    delay = 10,
+    time = 200;
+  if (scrollTop <= 20) {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    return;
+  }
+  let step = Math.ceil(scrollTop * delay / time);
+  let timer = setInterval(() => {
+    scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop;
+    if (scrollTop - step <= 0) {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      clearInterval(timer);
+    } else {
+      document.documentElement.scrollTop = scrollTop - step;
+      document.body.scrollTop = scrollTop - step;
+    }
+  }, delay);
+}
+
+document.addEventListener("scroll", handleScoll(), false);
+
+document.querySelector(".back-to-top").addEventListener("click", backToTop, false);
+
+</script>
+
+    </div>
+
+    
+      <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+<script>
+  (() => {
+    const mathjaxConfig = {
+      showProcessingMessages: false, //关闭js加载过程信息
+      messageStyle: "none", //不显示信息
+      jax: ["input/TeX", "output/HTML-CSS"],
+      tex2jax: {
+        inlineMath: [["$", "$"], ["\\(", "\\)"]], //行内公式选择符
+        displayMath: [["$$", "$$"], ["\\[", "\\]"]], //段内公式选择符
+        skipTags: ["script", "noscript", "style", "textarea", "pre", "code", "a"] //避开某些标签
+      },
+      "HTML-CSS": {
+        availableFonts: ["STIX", "TeX"], //可选字体
+        showMathMenu: false //关闭右击菜单显示
+      }
+    }
+
+    let mathjaxInterval = setInterval(() => {
+      if(!window.MathJax){
+        return;
+      }
+      window.MathJax.Hub.Config(mathjaxConfig)
+      window.MathJax.Hub.Queue(["Typeset", MathJax.Hub, document.getElementById('app')])
+
+      clearInterval(mathjaxInterval)
+    }, 10)    
+  })()
+</script>
+    
+
+    <script src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js" async></script>
+<script async>
+  let fancyTimer = setInterval(function(){
+    if(!window.$){
+      return;
+    }
+    $(document).ready(function() {
+      $(".post img").each(function () {
+        if($(this).parent().get(0).tagName.toLowerCase() === "a") {
+          return;
+        }
+        // $(this).attr("data-fancybox", "gallery"); // if you add 'data-fancybox', img will display after showed
+        var element = document.createElement("a");
+        $(element).attr("data-fancybox", "gallery");
+        $(element).attr("href", $(this).attr("src"));
+        $(this).wrap(element);
+      });
+      
+      clearInterval(fancyTimer);
+    });
+  }, 10);
+</script>
+
+    
+  </body>
+
+</html>

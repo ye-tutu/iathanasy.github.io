@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+  
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  <meta name="author" content="董沅鑫, yuanxin.me@gmail.com">
+  
+  
+  
+  <title>Jquery插件扩展 | 不朽丶</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  
+    <meta name="keywords" content="JavaScript,Jquery,">
+  
+
+  <script>
+    console.log('\n%c Hexo-theme-bmw v4.0 ' + '%c 🎉 https://github.com/dongyuanxin/theme-bmw 🎉\n' + '\n%c View demo online ' + '%c 🔍 https://godbmw.com/ 🔍  \n' , 'color: #fadfa3; background: #030307; padding:3px 0;', '', 'color: #fadfa3; background: #030307; padding:3px 0;', '');
+  </script>
+
+  
+    <meta name="description" content="半神半圣亦半仙">
+  
+
+  
+    <link rel="alternate" href="/atom.xml" title="不朽丶" type="application/atom+xml">
+  
+
+  
+    <link rel="icon" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/images/touch-icon.png">
+  
+
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/icon/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script src="/js/util.js"></script>
+<script src="/js/valine.min.js"></script>
+
+  
+
+  
+
+  
+  
+  <script src="//cdn.bootcss.com/jquery/3.3.1/jquery.min.js" async></script>
+  
+  
+    <script src="//cdn.jsdelivr.net/npm/leancloud-storage@3.11.0/dist/av-min.js"></script>
+  
+
+</head>
+
+  <body>
+
+    
+
+    <div id="app">
+
+      <div class="header-wrap">
+  <header>
+    <div class="site-brand">
+      <div class="site-title">
+        <a href="/">不朽丶</a>
+      </div>
+    </div>
+    <nav class="site-navigation">
+      <ul class="nav-menu">
+      
+        <li class="nav-item" data-path="/">
+          
+            <a 
+              href="/"
+              target="_self"
+            >
+              主页
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          
+            <a 
+              href="/archives/"
+              target="_self"
+            >
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          
+            <a 
+              href="/tags/"
+              target="_self"
+            >
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          
+            <a 
+              href="/about/"
+              target="_self"
+            >
+              关于
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/rest/">
+          
+            <a 
+              href="/html/rest/"
+              target="_blank"
+            >
+              作息
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/laboratory/">
+          
+            <a 
+              href="/html/laboratory/"
+              target="_blank"
+            >
+              实验室
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/md/">
+          
+            <a 
+              href="/html/md/"
+              target="_blank"
+            >
+              MarkDown
+            </a>
+          
+        </li>
+      
+      </ul>
+    </nav>
+    <i class="iconfont icon-menu"></i>
+  </header>
+</div>
+
+<script>
+  let links = document.querySelectorAll('.nav-item');
+  for(let link of links){
+    let childrenLink = link.querySelector('ul');
+    link.addEventListener('mouseenter', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown active";
+      }
+    })
+    link.addEventListener('mouseleave', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown";
+      }
+    })
+  }
+  let rootRealPath = getRealPath(window.location.pathname, true);
+  for(let link of links) {
+    let linkPath = link.getAttribute("data-path");
+    if(linkPath && getRealPath(linkPath, true) === rootRealPath) {
+      link.className = "nav-item hover";
+    }
+  }
+
+  let iconMenu = document.querySelector("i.iconfont.icon-menu"),
+    iconMenuClicked = false;
+  let navDOM = document.querySelector("nav.site-navigation");
+  iconMenu.addEventListener("click", () => {
+    iconMenuClicked 
+      ? navDOM.className = "site-navigation active"
+      : navDOM.className = "site-navigation";
+    iconMenuClicked = !iconMenuClicked;
+  })
+</script>
+
+      
+
+
+
+
+
+
+
+
+<div class="container post-index">
+
+  
+
+<div class="post">
+  <h1 class="article-title">
+    <span>Jquery插件扩展</span>
+  </h1>
+  <div class="article-top-meta">
+    <span>
+      发布 : 
+      2019-03-22
+    </span>
+    
+    
+      <span>
+        浏览 : <span class="article-timer" data-identity="Jquery插件扩展"></span>
+      </span>
+    
+  </div>
+
+  
+
+  <div class="article-content">
+    <div class="markdown-body">
+      <h1 id="JQuery插件扩展"><a href="#JQuery插件扩展" class="headerlink" title="JQuery插件扩展"></a>JQuery插件扩展</h1><p>我们平时会使用别人提供的一些Jquery组件来减轻开发工作。如：<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$.alert(&#123;<span class="attr">title</span>:<span class="string">'标题'</span>,<span class="attr">content</span>:<span class="string">'内容'</span>&#125;);</span><br><span class="line">$(<span class="string">'#main'</span>).loading();</span><br></pre></td></tr></table></figure></p>
+<p>那么这些组件是如何编写的呢？</p>
+<p>以下介绍Jquery提供的两种插件扩展方式：</p>
+<h2 id="extend"><a href="#extend" class="headerlink" title="$.extend()"></a>$.extend()</h2><p><code>$.extend</code>不仅可以用来合并两个对象，也可以用来扩展JQuery方法。</p>
+<p>它可以往<code>$</code>对象中添加一个对象，之后我们就可以通过<code>$.xxx</code>来使用它，如同一个普通函数。</p>
+<p>假设我们现在需要自定义一个弹窗组件，我们需要做如下准备：</p>
+<ol>
+<li>编写弹窗的css样式；</li>
+<li>提供一个<code>$.alertDefault</code>保存默认参数；</li>
+<li>实现<code>$.aler()</code>函数；</li>
+</ol>
+<p>具体代码如下：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="meta-keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">"en"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">"UTF-8"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">title</span>&gt;</span>JQuery插件扩展<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"http://libs.baidu.com/jquery/1.9.0/jquery.min.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">style</span>&gt;</span></span><br><span class="line">/* 1. 编写弹窗样式 */</span><br><span class="line">html, body &#123;</span><br><span class="line">  height: 100%;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal-cover &#123;</span><br><span class="line">  position: fixed;</span><br><span class="line">  overflow: auto;</span><br><span class="line">  top: 0;</span><br><span class="line">  bottom: 0;</span><br><span class="line">  left: 0;</span><br><span class="line">  right: 0;</span><br><span class="line">  background: rgba(0, 0, 0, 0.2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal-cover.hide &#123;</span><br><span class="line">  display: none;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal &#123;</span><br><span class="line">  position: absolute;</span><br><span class="line">  min-width: 600px;</span><br><span class="line">  min-height: 180px;</span><br><span class="line">  top: 15%;</span><br><span class="line">  left: 50%;</span><br><span class="line">  transform: translateX(-50%);</span><br><span class="line">  border-radius: 10px;</span><br><span class="line">  background: #ffffff;</span><br><span class="line">  box-shadow: 0 0 8px 0 #828282;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal .header &#123;</span><br><span class="line">  font-weight: bolder;</span><br><span class="line">  border-bottom: 1px solid #cccccc;</span><br><span class="line">  padding: 10px 20px;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal .close &#123;</span><br><span class="line">  position: absolute;</span><br><span class="line">  top: 3px;</span><br><span class="line">  right: 20px;</span><br><span class="line">  font-size: 25px;</span><br><span class="line">  cursor: pointer;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal .main &#123;</span><br><span class="line">  padding: 15px 20px;</span><br><span class="line">  max-height: 100%;</span><br><span class="line">  position: relative;</span><br><span class="line">  display: inline-block;</span><br><span class="line">  width: 100%;</span><br><span class="line">  box-sizing: border-box;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal .footer &#123;</span><br><span class="line">  text-align: center;</span><br><span class="line">  margin: 20px 0;</span><br><span class="line">  position: relative;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.modal .footer button &#123;</span><br><span class="line">  border: 1px solid;</span><br><span class="line">  border-radius: 4px;</span><br><span class="line">  padding: 2px 15px;</span><br><span class="line">  margin-left: 10px;</span><br><span class="line">  width: 120px;</span><br><span class="line">  height: 30px;</span><br><span class="line">  cursor: pointer;</span><br><span class="line">  background-color: #62259d;</span><br><span class="line">  color: #ffffff;</span><br><span class="line">  border-color: #62259d;</span><br><span class="line">&#125;</span><br><span class="line"><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"button"</span>&gt;</span>打开自定义弹窗<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="javascript">(<span class="function"><span class="keyword">function</span>(<span class="params">$</span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">  $.extend(&#123;</span></span><br><span class="line"><span class="javascript">    <span class="comment">/* 2. 设置弹窗默认参数，用户可以通过修改$.alertDefault来修改全局的默认参数 */</span></span></span><br><span class="line">    alertDefault: &#123;</span><br><span class="line"><span class="javascript">      id: <span class="string">'alert-0'</span>,</span></span><br><span class="line"><span class="javascript">      title: <span class="string">'提示'</span>,</span></span><br><span class="line"><span class="javascript">      content: <span class="string">''</span>,</span></span><br><span class="line"><span class="javascript">      okLabel: <span class="string">'确认'</span></span></span><br><span class="line">    &#125;,</span><br><span class="line"><span class="javascript">    <span class="comment">/* 3. 弹窗组件的实现 */</span></span></span><br><span class="line"><span class="javascript">    alert: <span class="function"><span class="keyword">function</span>(<span class="params">options</span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 合并用户参数和默认参数</span></span></span><br><span class="line"><span class="javascript">      options = $.extend(<span class="literal">true</span>, &#123;&#125;, $.alertDefault, options || &#123;&#125;);</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 创建弹窗html</span></span></span><br><span class="line"><span class="javascript">      <span class="keyword">var</span> alertHtml = <span class="string">'&lt;div class="modal-cover hide" id="'</span> + options.id + <span class="string">'"&gt;'</span> +</span></span><br><span class="line"><span class="xml">            '<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"modal"</span>&gt;</span>' +</span></span><br><span class="line"><span class="xml">              '<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"header"</span>&gt;</span>' +</span></span><br><span class="line"><span class="xml">                '<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"title"</span>&gt;</span>' + options.title + '<span class="tag">&lt;/<span class="name">div</span>&gt;</span>' +</span></span><br><span class="line"><span class="xml">                '<span class="tag">&lt;<span class="name">span</span> <span class="attr">class</span>=<span class="string">"close"</span>&gt;</span><span class="symbol">&amp;times;</span><span class="tag">&lt;/<span class="name">span</span>&gt;</span>' +</span></span><br><span class="line"><span class="javascript">              <span class="string">'&lt;/div&gt;'</span> +</span></span><br><span class="line"><span class="xml">              '<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"main"</span>&gt;</span>' + options.content + '<span class="tag">&lt;/<span class="name">div</span>&gt;</span>' +</span></span><br><span class="line"><span class="xml">              '<span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"footer"</span>&gt;</span>' +</span></span><br><span class="line"><span class="xml">                '<span class="tag">&lt;<span class="name">button</span> <span class="attr">class</span>=<span class="string">"ok"</span>&gt;</span>' + options.okLabel + '<span class="tag">&lt;/<span class="name">button</span>&gt;</span>' +</span></span><br><span class="line"><span class="javascript">              <span class="string">'&lt;/div&gt;'</span> +</span></span><br><span class="line"><span class="javascript">            <span class="string">'&lt;/div&gt;'</span> +</span></span><br><span class="line"><span class="javascript">          <span class="string">'&lt;/div&gt;'</span>;</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 将弹窗html插入&lt;body&gt;，若已存在则修改其html</span></span></span><br><span class="line"><span class="javascript">      <span class="keyword">var</span> _alert = $(<span class="string">'#'</span> + options.id);</span></span><br><span class="line">      if (!_alert.length) &#123;</span><br><span class="line"><span class="javascript">          $(<span class="string">'body'</span>).append(alertHtml);</span></span><br><span class="line"><span class="javascript">      &#125; <span class="keyword">else</span> &#123;</span></span><br><span class="line"><span class="javascript">          _alert.prop(<span class="string">'outerHTML'</span>, alertHtml);</span></span><br><span class="line">      &#125;</span><br><span class="line"><span class="javascript">      _alert = $(<span class="string">'#'</span> + options.id);</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 绑定关闭对话框函数</span></span></span><br><span class="line"><span class="javascript">      _alert.find(<span class="string">'.close,.ok'</span>).on(<span class="string">'click'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">        _alert.addClass(<span class="string">'hide'</span>);</span></span><br><span class="line">      &#125;);</span><br><span class="line"><span class="javascript">      <span class="comment">// 显示对话框</span></span></span><br><span class="line"><span class="javascript">      _alert.removeClass(<span class="string">'hide'</span>);</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;)(jQuery);</span><br><span class="line"></span><br><span class="line"><span class="javascript">$(<span class="string">'#button'</span>).on(<span class="string">'click'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">  <span class="comment">/* 4. 调用组件的方法 */</span></span></span><br><span class="line"><span class="javascript">  $.alert(&#123;</span></span><br><span class="line"><span class="javascript">    title: <span class="string">'自定义标题'</span>,</span></span><br><span class="line"><span class="javascript">    content: <span class="string">'自定义内容'</span></span></span><br><span class="line">  &#125;);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h2 id="fn"><a href="#fn" class="headerlink" title="$.fn.*"></a>$.fn.*</h2><p><code>$.fn</code>可以为选择器的所有元素扩展一个方法。</p>
+<p>::: tip 示例<br>如我们定义了<code>$.fn.loading()</code>，则可以使用<code>$(&#39;div&#39;).loading()</code>为所有的<code>&lt;div&gt;</code>元素调用该方法。<br>:::</p>
+<p>为了实现元素的加载特效：<code>$.fn.loading()</code>，我们需要：</p>
+<ol>
+<li>编写加载样式；</li>
+<li>实现<code>Loading</code>对象；</li>
+<li>为<code>$.fn</code>的每个元素添加<code>Loading</code>对象；</li>
+<li>设置<code>$.fn.loading.defaults</code>默认参数；</li>
+</ol>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="meta-keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">"en"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">"UTF-8"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">title</span>&gt;</span>JQuery插件扩展<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">"http://libs.baidu.com/jquery/1.9.0/jquery.min.js"</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">style</span>&gt;</span></span><br><span class="line">/* 1. 编写加载效果样式 */</span><br><span class="line">html, body &#123;</span><br><span class="line">  height: 100%;</span><br><span class="line">  margin: 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.loading-container &#123;</span><br><span class="line">  position: relative;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.loading-cover &#123;</span><br><span class="line">  position: absolute;</span><br><span class="line">  background: #6868687a;</span><br><span class="line">  z-index: 15;</span><br><span class="line">  top: 0;</span><br><span class="line">  left: 0;</span><br><span class="line">  height: 100%;</span><br><span class="line">  width: 100%;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.loading-cover.hide &#123;</span><br><span class="line">  display: none;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">.loading-cover .loading-body &#123;</span><br><span class="line">  position: relative;</span><br><span class="line">  top: 50%;</span><br><span class="line">  left: 50%;</span><br><span class="line">  transform: translate(-50%, -50%);</span><br><span class="line">  position: absolute;</span><br><span class="line">  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.27);</span><br><span class="line">  border-radius: 7px;</span><br><span class="line">  padding: 15px 25px;</span><br><span class="line">  font-size: 24px;</span><br><span class="line">  color: #666;</span><br><span class="line">  background: #ffffff;</span><br><span class="line">  text-align: center;</span><br><span class="line">&#125;</span><br><span class="line"><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">button</span> <span class="attr">id</span>=<span class="string">"button"</span>&gt;</span>显示加载效果<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="javascript">(<span class="function"><span class="keyword">function</span>(<span class="params">$</span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">  <span class="comment">/* 2. 定义Loading对象 */</span></span></span><br><span class="line"><span class="javascript">  <span class="function"><span class="keyword">function</span> <span class="title">Loading</span>(<span class="params">$el, options</span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">    <span class="keyword">this</span>.$el = $el;</span></span><br><span class="line"><span class="javascript">    <span class="keyword">this</span>.options = options;</span></span><br><span class="line">  &#125;</span><br><span class="line">  Loading.prototype = &#123;</span><br><span class="line"><span class="javascript">    <span class="keyword">constructor</span>: Loading,</span></span><br><span class="line"><span class="javascript">    init: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 将html插入要显示加载效果的元素中</span></span></span><br><span class="line"><span class="javascript">      <span class="keyword">if</span> (!<span class="keyword">this</span>.lid) &#123;</span></span><br><span class="line"><span class="javascript">        <span class="keyword">this</span>.lid = <span class="keyword">new</span> <span class="built_in">Date</span>().getTime();</span></span><br><span class="line"><span class="javascript">        <span class="keyword">if</span> (<span class="keyword">this</span>.$el.css(<span class="string">'position'</span>) === <span class="string">'static'</span> &amp;&amp; !<span class="keyword">this</span>.$el.is(<span class="string">'body'</span>) &amp;&amp; !<span class="keyword">this</span>.$el.is(<span class="string">'html'</span>)) &#123;</span></span><br><span class="line"><span class="javascript">          <span class="keyword">this</span>.$el.addClass(<span class="string">'loading-container'</span>);</span></span><br><span class="line">        &#125;</span><br><span class="line"><span class="javascript">        <span class="keyword">this</span>.$el.append(<span class="string">'&lt;div id="'</span> + <span class="keyword">this</span>.lid + <span class="string">'" class="loading-cover hide"&gt;&lt;/div&gt;'</span>);</span></span><br><span class="line">      &#125;</span><br><span class="line"><span class="javascript">      <span class="keyword">this</span>.$load = $(<span class="string">'#'</span> + <span class="keyword">this</span>.lid);</span></span><br><span class="line"><span class="javascript">      <span class="keyword">this</span>.$load.html(<span class="string">'&lt;div class="loading-body"&gt;'</span> + <span class="keyword">this</span>.options.text + <span class="string">'&lt;/div&gt;'</span>);</span></span><br><span class="line">    &#125;,</span><br><span class="line"><span class="javascript">    show: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="keyword">this</span>.$load.removeClass(<span class="string">'hide'</span>);</span></span><br><span class="line">    &#125;,</span><br><span class="line"><span class="javascript">    hide: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="keyword">this</span>.$load.addClass(<span class="string">'hide'</span>);</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br><span class="line"><span class="javascript">  <span class="comment">/* 3. 实现插件扩展 */</span></span></span><br><span class="line"><span class="javascript">  $.fn.loading = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">    <span class="comment">// 获取参数</span></span></span><br><span class="line"><span class="javascript">    <span class="keyword">var</span> option = <span class="built_in">arguments</span>[<span class="number">0</span>],</span></span><br><span class="line">        value,</span><br><span class="line"><span class="javascript">        allowedMethods = [<span class="string">'show'</span>, <span class="string">'hide'</span>];</span></span><br><span class="line"><span class="javascript">    <span class="comment">// 遍历所有选择器对象</span></span></span><br><span class="line"><span class="javascript">    <span class="keyword">this</span>.each(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="keyword">var</span> $<span class="keyword">this</span> = $(<span class="keyword">this</span>),</span></span><br><span class="line"><span class="javascript">        data = $<span class="keyword">this</span>.data(<span class="string">'loading'</span>),</span></span><br><span class="line"><span class="javascript">        options = $.extend(<span class="literal">true</span>, &#123;&#125;, $.fn.loading.defaults, <span class="keyword">typeof</span> option === <span class="string">'object'</span> &amp;&amp; option);</span></span><br><span class="line"><span class="javascript">      <span class="comment">// 利用$.data存储Loading对象，若不存在则需要初始化</span></span></span><br><span class="line">      if (!data) &#123;</span><br><span class="line"><span class="javascript">        data = <span class="keyword">new</span> Loading($<span class="keyword">this</span>, options);</span></span><br><span class="line"><span class="javascript">        $<span class="keyword">this</span>.data(<span class="string">'loading'</span>, data);</span></span><br><span class="line">        data.init();</span><br><span class="line">      &#125;</span><br><span class="line"><span class="javascript">      <span class="comment">// 若参数是string则调用对应方法</span></span></span><br><span class="line"><span class="javascript">      <span class="keyword">if</span> (<span class="keyword">typeof</span> option === <span class="string">'string'</span>) &#123;</span></span><br><span class="line"><span class="javascript">        <span class="keyword">if</span> ($.inArray(option, allowedMethods) &lt; <span class="number">0</span>) &#123;</span></span><br><span class="line"><span class="javascript">          <span class="keyword">throw</span> <span class="string">'Unknown method: '</span> + option;</span></span><br><span class="line">        &#125;</span><br><span class="line">        value = data[option]();</span><br><span class="line"><span class="javascript">      &#125; <span class="keyword">else</span> &#123;</span></span><br><span class="line">        options.autoShow &amp;&amp; data.show();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"><span class="javascript">    <span class="keyword">return</span> <span class="keyword">typeof</span> value !== <span class="string">'undefined'</span> ? value : <span class="keyword">this</span>;</span></span><br><span class="line">  &#125;;</span><br><span class="line"><span class="javascript">  <span class="comment">/* 4. 指定默认参数 */</span></span></span><br><span class="line"><span class="javascript">  $.fn.loading.defaults = &#123;</span></span><br><span class="line"><span class="javascript">    <span class="string">'autoShow'</span>: <span class="literal">true</span>,</span></span><br><span class="line"><span class="javascript">    <span class="string">'text'</span>: <span class="string">'Loading ...'</span></span></span><br><span class="line">  &#125;;</span><br><span class="line">&#125;)(jQuery);</span><br><span class="line"></span><br><span class="line"><span class="javascript">$(<span class="string">'#button'</span>).on(<span class="string">'click'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">  <span class="comment">/* 5.1 初次调用，可设置参数，或使用默认参数 */</span></span></span><br><span class="line"><span class="javascript">  $(<span class="string">'body'</span>).loading();</span></span><br><span class="line"><span class="javascript">  setTimeout(<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span></span><br><span class="line"><span class="javascript">    <span class="comment">/* 5.2 后续调用 */</span></span></span><br><span class="line"><span class="javascript">    $(<span class="string">'body'</span>).loading(<span class="string">'hide'</span>);</span></span><br><span class="line">  &#125;, 2000);</span><br><span class="line">&#125;);</span><br><span class="line"><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+    </div>
+  </div>
+  
+    <div class="copy-right">
+      <div class="markdown-body">
+        <blockquote>
+        
+        
+          本文作者 : iathanasy <br/>
+        
+        原文链接 : <a href="">https://iathanasy.github.io/2019/03/22/Jquery插件扩展/</a><br>
+        版权声明 : 本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！
+        </blockquote>
+      </div>
+    </div>
+  
+  
+  
+
+  
+
+  <div class="article-footer">
+    <div class="article-meta pull-left">
+      <span>
+        
+          <i class="iconfont icon-06tags"></i>标签: 
+          
+          <span class="span--tag">
+            <a href="/tags/JavaScript/">
+              #JavaScript
+            </a>
+          </span>
+          
+          <span class="span--tag">
+            <a href="/tags/Jquery/">
+              #Jquery
+            </a>
+          </span>
+          
+        
+      </span>
+    </div>
+    <div class="article-meta pull-right">
+    </div>
+  </div>
+</div>
+
+
+  <aside id="sidebar">
+    <p id="sidebar-header"></p>
+    <ol id="sidebar-toc"></ol>
+  </aside>
+  <script async>setTimeout(generateToc, 10);</script>
+
+
+  <nav class="post-navigation">
+    
+      <div class="nav-pre">
+        <i class="iconfont icon-prev"></i>
+        上一篇:
+        <a href="/2019/01/28/HBase的RowKey设计/" target="_self">HBase的RowKey设计</a>
+      </div>
+    
+    
+      <div class="nav-next">
+        下一篇:
+        <a href="/2020/03/07/JAVA线程/" target="_self">JAVA线程</a>
+        <i class="iconfont icon-next"></i>
+      </div>
+    
+  </nav>
+
+   
+
+  
+    <script defer>
+const valineAPI = (() => {
+  try {
+    AV.init("Hyq9wkH495DgNHWhDQCOfQSp-gzGzoHsz", "WaR7nrzhliHj9aVwdQzkdlGd");
+  } catch(error) {}
+  const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+      query.equalTo("identity", identity);
+      query.find().then(results => {
+        resolve(results.length > 0);
+      }, error => reject(error));
+    })
+  }
+
+  const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+      let querys = [];
+      for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+      }
+      query = AV.Query.or.apply(null ,querys);
+    } else {
+      identity = identity || getRealPath();
+      query = new AV.Query("Timer");
+      query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+      query.find()
+      .then(results => resolve(results))
+      .catch(error => reject(error))
+    })
+  }
+
+  const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let Todo = AV.Object.extend('Timer');
+      let todo = new Todo();
+      todo.set("times", 1);
+      todo.set("identity", identity);
+      todo.save().then(res => resolve(true), error => reject(error));
+    })
+  }
+
+  const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let query = new AV.Query('Timer');
+      query.equalTo("identity", identity);
+      query.find().then(todos => {
+        todos.forEach(todo => {
+          todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+      }).then(todos => resolve(true), error => reject(error));
+    })
+  }
+
+  return {
+    isExist,
+    _get,
+    update,
+    create
+  }
+})()
+
+const calcAndWriteTimes = () => {
+  let isPost = true;
+
+  let timerAllDOM = document.querySelectorAll(".article-timer");
+
+  if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+      if(exist) {
+        return valineAPI.update(identity);
+      }
+      return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+  }
+
+  let timerDOMCache = {};
+
+  for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+      timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+      timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+      };
+    }
+  }
+
+  let identities = Object.keys(timerDOMCache);
+  valineAPI._get(identities).then(results => {
+    for(let result of results) {
+      let {identity, times} = result.attributes;
+      timerDOMCache[identity].times = times;
+      timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+      if(timerDOMCache[identity].times){
+        continue;
+      }
+      timerDOMCache[identity].dom.map(item => item.innerText = 1);
+      valineAPI.create(identity);
+    }
+  }).catch(error => console.log(error.message))
+}
+
+if(true){
+  calcAndWriteTimes();
+}
+</script>
+   
+
+</div>
+
+
+      <footer>
+  <p class="site-info">
+    博客已运行<span id="time-to-now"></span><span class="my-face">(●'◡'●)ﾉ♥</span>
+    <br>
+    特别鸣谢：
+			<a href="https://github.com/">GitHub</a> |
+			<a href="https://hexo.io">Hexo</a> |
+			<a href="https://github.com/dongyuanxin/theme-bmw">BMW</a> 
+    <br>
+    
+  </p>
+</footer>
+
+
+
+<script>
+const timeToNowDOM = document.querySelector("#time-to-now");
+const startTimestamp = new Date(2019, 0, 7).getTime();
+
+const updateTimeStr = () => {
+  let offset = parseInt(
+      (new Date().getTime() - startTimestamp) / 1000,
+      10
+    ),
+    day = Math.floor(offset / 86400),
+    hour = Math.floor((offset % 86400) / 3600),
+    minute = Math.floor(((offset % 86400) % 3600) / 60),
+    second = Math.floor(((offset % 86400) % 3600) % 60);
+  timeToNowDOM.innerHTML =
+    day + "天" + hour + "小时" + minute + "分钟" + second + "秒";
+  setTimeout(updateTimeStr, 500);
+}
+
+setTimeout(updateTimeStr, 500);
+</script>
+
+
+      <div class="back-to-top hidden">
+  <span>
+    <i class="iconfont icon-60"></i><span></span>%
+  </span>
+</div>
+
+<script>
+const updateIconToTop = percent => {
+  let dom = document.querySelector(".back-to-top span span");
+  dom.innerText = percent;
+  if(percent < 1) {
+    document.querySelector(".back-to-top").className = "back-to-top hidden";
+  } else {
+    document.querySelector(".back-to-top").className = "back-to-top";
+  }
+}
+
+const handleScoll = () => {
+  let isRunning = false;
+  return () => {
+    if (isRunning) return;
+    isRunning = true;
+    window.requestAnimationFrame(timestamp => {
+      let scrollTop =
+          document.documentElement.scrollTop || document.body.scrollTop,
+        scrollHeight =
+          document.documentElement.scrollHeight ||
+          document.body.scrollHeight,
+        clientHeight =
+          document.documentElement.clientHeight ||
+          document.body.clientHeight;
+      isRunning = false;
+      if (scrollTop <= 1) {
+        updateIconToTop(0);
+        return;
+      }
+      if (scrollTop + clientHeight >= scrollHeight) {
+        updateIconToTop(100);
+      } else {
+        updateIconToTop(parseInt(
+          100 * scrollTop / (scrollHeight - clientHeight),
+          10
+        ));
+      }
+    });
+  };
+}
+
+const backToTop = () => {
+  let scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop,
+    delay = 10,
+    time = 200;
+  if (scrollTop <= 20) {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    return;
+  }
+  let step = Math.ceil(scrollTop * delay / time);
+  let timer = setInterval(() => {
+    scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop;
+    if (scrollTop - step <= 0) {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      clearInterval(timer);
+    } else {
+      document.documentElement.scrollTop = scrollTop - step;
+      document.body.scrollTop = scrollTop - step;
+    }
+  }, delay);
+}
+
+document.addEventListener("scroll", handleScoll(), false);
+
+document.querySelector(".back-to-top").addEventListener("click", backToTop, false);
+
+</script>
+
+    </div>
+
+    
+      <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+<script>
+  (() => {
+    const mathjaxConfig = {
+      showProcessingMessages: false, //关闭js加载过程信息
+      messageStyle: "none", //不显示信息
+      jax: ["input/TeX", "output/HTML-CSS"],
+      tex2jax: {
+        inlineMath: [["$", "$"], ["\\(", "\\)"]], //行内公式选择符
+        displayMath: [["$$", "$$"], ["\\[", "\\]"]], //段内公式选择符
+        skipTags: ["script", "noscript", "style", "textarea", "pre", "code", "a"] //避开某些标签
+      },
+      "HTML-CSS": {
+        availableFonts: ["STIX", "TeX"], //可选字体
+        showMathMenu: false //关闭右击菜单显示
+      }
+    }
+
+    let mathjaxInterval = setInterval(() => {
+      if(!window.MathJax){
+        return;
+      }
+      window.MathJax.Hub.Config(mathjaxConfig)
+      window.MathJax.Hub.Queue(["Typeset", MathJax.Hub, document.getElementById('app')])
+
+      clearInterval(mathjaxInterval)
+    }, 10)    
+  })()
+</script>
+    
+
+    <script src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js" async></script>
+<script async>
+  let fancyTimer = setInterval(function(){
+    if(!window.$){
+      return;
+    }
+    $(document).ready(function() {
+      $(".post img").each(function () {
+        if($(this).parent().get(0).tagName.toLowerCase() === "a") {
+          return;
+        }
+        // $(this).attr("data-fancybox", "gallery"); // if you add 'data-fancybox', img will display after showed
+        var element = document.createElement("a");
+        $(element).attr("data-fancybox", "gallery");
+        $(element).attr("href", $(this).attr("src"));
+        $(this).wrap(element);
+      });
+      
+      clearInterval(fancyTimer);
+    });
+  }, 10);
+</script>
+
+    
+  </body>
+
+</html>

@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+  
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  <meta name="author" content="董沅鑫, yuanxin.me@gmail.com">
+  
+  
+  
+  <title>Netty 源码解析（三）- Netty 的 Future 和 Promise | 不朽丶</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  
+    <meta name="keywords" content="Java,Netty,">
+  
+
+  <script>
+    console.log('\n%c Hexo-theme-bmw v4.0 ' + '%c 🎉 https://github.com/dongyuanxin/theme-bmw 🎉\n' + '\n%c View demo online ' + '%c 🔍 https://godbmw.com/ 🔍  \n' , 'color: #fadfa3; background: #030307; padding:3px 0;', '', 'color: #fadfa3; background: #030307; padding:3px 0;', '');
+  </script>
+
+  
+    <meta name="description" content="半神半圣亦半仙">
+  
+
+  
+    <link rel="alternate" href="/atom.xml" title="不朽丶" type="application/atom+xml">
+  
+
+  
+    <link rel="icon" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/images/touch-icon.png">
+  
+
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/icon/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+
+  <script src="/js/util.js"></script>
+<script src="/js/valine.min.js"></script>
+
+  
+
+  
+
+  
+  
+  <script src="//cdn.bootcss.com/jquery/3.3.1/jquery.min.js" async></script>
+  
+  
+    <script src="//cdn.jsdelivr.net/npm/leancloud-storage@3.11.0/dist/av-min.js"></script>
+  
+
+</head>
+
+  <body>
+
+    
+
+    <div id="app">
+
+      <div class="header-wrap">
+  <header>
+    <div class="site-brand">
+      <div class="site-title">
+        <a href="/">不朽丶</a>
+      </div>
+    </div>
+    <nav class="site-navigation">
+      <ul class="nav-menu">
+      
+        <li class="nav-item" data-path="/">
+          
+            <a 
+              href="/"
+              target="_self"
+            >
+              主页
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          
+            <a 
+              href="/archives/"
+              target="_self"
+            >
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          
+            <a 
+              href="/tags/"
+              target="_self"
+            >
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          
+            <a 
+              href="/about/"
+              target="_self"
+            >
+              关于
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/rest/">
+          
+            <a 
+              href="/html/rest/"
+              target="_blank"
+            >
+              作息
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/laboratory/">
+          
+            <a 
+              href="/html/laboratory/"
+              target="_blank"
+            >
+              实验室
+            </a>
+          
+        </li>
+      
+        <li class="nav-item" data-path="/html/md/">
+          
+            <a 
+              href="/html/md/"
+              target="_blank"
+            >
+              MarkDown
+            </a>
+          
+        </li>
+      
+      </ul>
+    </nav>
+    <i class="iconfont icon-menu"></i>
+  </header>
+</div>
+
+<script>
+  let links = document.querySelectorAll('.nav-item');
+  for(let link of links){
+    let childrenLink = link.querySelector('ul');
+    link.addEventListener('mouseenter', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown active";
+      }
+    })
+    link.addEventListener('mouseleave', () => {
+      if(childrenLink) {
+        childrenLink.className = "nav-menu--dropdown";
+      }
+    })
+  }
+  let rootRealPath = getRealPath(window.location.pathname, true);
+  for(let link of links) {
+    let linkPath = link.getAttribute("data-path");
+    if(linkPath && getRealPath(linkPath, true) === rootRealPath) {
+      link.className = "nav-item hover";
+    }
+  }
+
+  let iconMenu = document.querySelector("i.iconfont.icon-menu"),
+    iconMenuClicked = false;
+  let navDOM = document.querySelector("nav.site-navigation");
+  iconMenu.addEventListener("click", () => {
+    iconMenuClicked 
+      ? navDOM.className = "site-navigation active"
+      : navDOM.className = "site-navigation";
+    iconMenuClicked = !iconMenuClicked;
+  })
+</script>
+
+      
+
+
+
+
+
+
+
+
+<div class="container post-index">
+
+  
+
+<div class="post">
+  <h1 class="article-title">
+    <span>Netty 源码解析（三）- Netty 的 Future 和 Promise</span>
+  </h1>
+  <div class="article-top-meta">
+    <span>
+      发布 : 
+      2020-09-19
+    </span>
+    
+    
+      <span>
+        浏览 : <span class="article-timer" data-identity="Netty+源码解析（三）_+Netty+的+Future+和+Promise"></span>
+      </span>
+    
+  </div>
+
+  
+
+  <div class="article-content">
+    <div class="markdown-body">
+      <p>Netty 源码分析系列：</p>
+<p><a href="/post/netty-part-1">Netty 源码解析（一）: 开始</a></p>
+<p><a href="/post/netty-part-2">Netty 源码解析（二）: Netty 的 Channel</a></p>
+<p>当前 =&gt; Netty 源码解析（三）: Netty 的 Future 和 Promise</p>
+<p><a href="/post/netty-part-4">Netty 源码解析（四）: Netty 的 ChannelPipeline</a></p>
+<p><a href="/post/netty-part-5">Netty 源码解析（五）: Netty 的线程池分析</a></p>
+<p><a href="/post/netty-part-6">Netty 源码解析（六）: Channel 的 register 操作</a></p>
+<p><a href="/post/netty-part-7">Netty 源码解析（七）: NioEventLoop 工作流程</a></p>
+<p><a href="/post/netty-part-8">Netty 源码解析（八）: 回到 Channel 的 register 操作</a></p>
+<p><a href="/post/netty-part-9">Netty 源码解析（九）: connect 过程和 bind 过程分析</a></p>
+<h2 id="Netty-中的异步编程-Future-和-Promise"><a href="#Netty-中的异步编程-Future-和-Promise" class="headerlink" title="Netty 中的异步编程: Future 和 Promise"></a>Netty 中的异步编程: Future 和 Promise</h2><p>Netty 中非常多的异步调用，所以在介绍更多 NIO 相关的内容之前，我们来看看它的异步接口是怎么使用的。</p>
+<p>前面我们在介绍 Echo 例子的时候，已经用过了 ChannelFuture 这个接口了：</p>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/6.png" alt="6"></p>
+<p>争取在看完本节后，读者能搞清楚上面的这几行划线部分是怎么走的。</p>
+<p>关于 Future 接口，我想大家应该都很熟悉，用得最多的就是在使用 Java 的线程池 ThreadPoolExecutor 的时候了。在 <strong>submit</strong> 一个任务到线程池中的时候，返回的就是一个 <strong>Future</strong> 实例，通过它来获取提交的任务的执行状态和最终的执行结果，我们最常用它的 <code>isDone()</code> 和 <code>get()</code> 方法。</p>
+<p>下面是 JDK  中的 Future 接口 java.util.concurrent.Future：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Future</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line">	<span class="comment">// 取消该任务</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">cancel</span><span class="params">(<span class="keyword">boolean</span> mayInterruptIfRunning)</span></span>;</span><br><span class="line">    <span class="comment">// 任务是否已取消</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">isCancelled</span><span class="params">()</span></span>;</span><br><span class="line">	<span class="comment">// 任务是否已完成</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">isDone</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="comment">// 阻塞获取任务执行结果</span></span><br><span class="line">    <span class="function">V <span class="title">get</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException, ExecutionException</span>;</span><br><span class="line">    <span class="comment">// 带超时参数的获取任务执行结果</span></span><br><span class="line">    <span class="function">V <span class="title">get</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException, ExecutionException, TimeoutException</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Netty 中的 Future 接口（同名）继承了 JDK 中的 Future 接口，然后添加了一些方法：</p>
+<p>// io.netty.util.concurrent.Future</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Future</span>&lt;<span class="title">V</span>&gt; <span class="keyword">extends</span> <span class="title">java</span>.<span class="title">util</span>.<span class="title">concurrent</span>.<span class="title">Future</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 是否成功</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">isSuccess</span><span class="params">()</span></span>;</span><br><span class="line">    </span><br><span class="line">	<span class="comment">// 是否可取消</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">isCancellable</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果任务执行失败，这个方法返回异常信息</span></span><br><span class="line">    <span class="function">Throwable <span class="title">cause</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 添加 Listener 来进行回调</span></span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">addListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">addListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">removeListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">removeListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 阻塞等待任务结束，如果任务失败，将“导致失败的异常”重新抛出来</span></span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">sync</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="comment">// 不响应中断的 sync()，这个大家应该都很熟了</span></span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">syncUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 阻塞等待任务结束，和 sync() 功能是一样的，不过如果任务失败，它不会抛出执行过程中的异常</span></span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">await</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="function">Future&lt;V&gt; <span class="title">awaitUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">await</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">await</span><span class="params">(<span class="keyword">long</span> timeoutMillis)</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">awaitUninterruptibly</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">awaitUninterruptibly</span><span class="params">(<span class="keyword">long</span> timeoutMillis)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取执行结果，不阻塞。我们都知道 java.util.concurrent.Future 中的 get() 是阻塞的</span></span><br><span class="line">    <span class="function">V <span class="title">getNow</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 取消任务执行，如果取消成功，任务会因为 CancellationException 异常而导致失败</span></span><br><span class="line">    <span class="comment">//	  也就是 isSuccess()==false，同时上面的 cause() 方法返回 CancellationException 的实例。</span></span><br><span class="line">    <span class="comment">// mayInterruptIfRunning 说的是：是否对正在执行该任务的线程进行中断(这样才能停止该任务的执行)，</span></span><br><span class="line">    <span class="comment">// 	  似乎 Netty 中 Future 接口的各个实现类，都没有使用这个参数</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">cancel</span><span class="params">(<span class="keyword">boolean</span> mayInterruptIfRunning)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看完上面的 Netty 的 Future 接口，我们可以发现，它加了 sync() 和 await() 用于阻塞等待，还加了 Listeners，只要任务结束去回调 Listener 们就可以了，那么我们就不一定要主动调用 isDone() 来获取状态，或通过 get() 阻塞方法来获取值。</p>
+<blockquote>
+<p>所以它其实有两种使用范式</p>
+</blockquote>
+<p>顺便说下 sync() 和 await() 的区别：sync() 内部会先调用 await() 方法，等 await() 方法返回后，会检查下<strong>这个任务是否失败</strong>，如果失败，重新将导致失败的异常抛出来。也就是说，如果使用 await()，任务抛出异常后，await() 方法会返回，但是不会抛出异常，而 sync() 方法返回的同时会抛出异常。</p>
+<blockquote>
+<p>我们也可以看到，Future 接口没有和 IO 操作关联在一起，还是比较<em>纯净</em>的接口。</p>
+</blockquote>
+<p>接下来，我们来看 Future 接口的子接口 ChannelFuture，这个接口用得最多，它将和 IO 操作中的 Channel 关联在一起了，用于异步处理 Channel 中的事件。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ChannelFuture</span> <span class="keyword">extends</span> <span class="title">Future</span>&lt;<span class="title">Void</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ChannelFuture 关联的 Channel</span></span><br><span class="line">    <span class="function">Channel <span class="title">channel</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 覆写以下几个方法，使得它们返回值为 ChannelFuture 类型 </span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">addListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">addListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt;... listeners)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">removeListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">removeListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">sync</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">syncUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">await</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelFuture <span class="title">awaitUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 用来标记该 future 是 void 的，</span></span><br><span class="line">    <span class="comment">// 这样就不允许使用 addListener(...), sync(), await() 以及它们的几个重载方法</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">isVoid</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们看到，ChannelFuture 接口相对于 Future 接口，除了将 channel 关联进来，没有增加什么东西。还有个 isVoid() 方法算是不那么重要的存在吧。其他几个都是方法覆写，为了让返回值类型变为 ChannelFuture，而不是原来的 Future。</p>
+<p>这里有点跳，我们来介绍下 Promise 接口，它和 ChannelFuture 接口无关，而是和前面的 Future 接口相关，Promise 这个接口非常重要。</p>
+<p>Promise 接口和 ChannelFuture 一样，也继承了 Netty 的 Future 接口，然后加了一些 Promise 的内容：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Promise</span>&lt;<span class="title">V</span>&gt; <span class="keyword">extends</span> <span class="title">Future</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 标记该 future 成功及设置其执行结果，并且会通知所有的 listeners。</span></span><br><span class="line">    <span class="comment">// 如果该操作失败，将抛出异常(失败指的是该 future 已经有了结果了，成功的结果，或者失败的结果)</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">setSuccess</span><span class="params">(V result)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 和 setSuccess 方法一样，只不过如果失败，它不抛异常，返回 false</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">trySuccess</span><span class="params">(V result)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 标记该 future 失败，及其失败原因。</span></span><br><span class="line">    <span class="comment">// 如果失败，将抛出异常(失败指的是已经有了结果了)</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">setFailure</span><span class="params">(Throwable cause)</span></span>;</span><br><span class="line">	</span><br><span class="line">    <span class="comment">// 标记该 future 失败，及其失败原因。</span></span><br><span class="line">    <span class="comment">// 如果已经有结果，返回 false，不抛出异常</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">tryFailure</span><span class="params">(Throwable cause)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 标记该 future 不可以被取消</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">setUncancellable</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这里和 ChannelFuture 一样，对这几个方法进行覆写，目的是为了返回 Promise 类型的实例</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">addListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">addListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">removeListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">removeListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> V&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">await</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">awaitUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">sync</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Promise&lt;V&gt; <span class="title">syncUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可能有些读者对 Promise 的概念不是很熟悉，这里简单说两句。</p>
+<p>我觉得只要明白一点，Promise 实例内部是一个任务，任务的执行往往是异步的，通常是一个线程池来处理任务。Promise 提供的 setSuccess(V result) 或 setFailure(Throwable t) 将来会被某个执行任务的线程在执行完成以后调用，同时那个线程在调用 setSuccess(result) 或 setFailure(t) 后会回调 listeners 的回调函数（当然，回调的具体内容不一定要由执行任务的线程自己来执行，它可以创建新的线程来执行，也可以将回调任务提交到某个线程池来执行）。而且，一旦 setSuccess(…) 或 setFailure(…) 后，那些 await() 或 sync() 的线程就会从等待中返回。</p>
+<p><strong>所以这里就有两种编程方式，一种是用 await()，等 await() 方法返回后，得到 promise 的执行结果，然后处理它；另一种就是提供 Listener 实例，我们不太关心任务什么时候会执行完，只要它执行完了以后会去执行 listener 中的处理方法就行。</strong></p>
+<p>接下来，我们再来看下 <strong>ChannelPromise</strong>，它继承了前面介绍的 ChannelFuture 和 Promise 接口。</p>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/4.png" alt="4"></p>
+<p>ChannelPromise 接口在 Netty 中使用得比较多，因为它综合了 ChannelFuture 和 Promise 两个接口：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Special &#123;<span class="doctag">@link</span> ChannelFuture&#125; which is writable.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ChannelPromise</span> <span class="keyword">extends</span> <span class="title">ChannelFuture</span>, <span class="title">Promise</span>&lt;<span class="title">Void</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 覆写 ChannelFuture 中的 channel() 方法，其实这个方法一点没变</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">Channel <span class="title">channel</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 下面几个方法是覆写 Promise 中的接口，为了返回值类型是 ChannelPromise</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">setSuccess</span><span class="params">(Void result)</span></span>;</span><br><span class="line">    <span class="function">ChannelPromise <span class="title">setSuccess</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">trySuccess</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">setFailure</span><span class="params">(Throwable cause)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 到这里大家应该都熟悉了，下面几个方法的覆写也是为了得到 ChannelPromise 类型的实例</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">addListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">addListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt;... listeners)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">removeListener</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt; listener)</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">removeListeners</span><span class="params">(GenericFutureListener&lt;? extends Future&lt;? <span class="keyword">super</span> Void&gt;&gt;... listeners)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">sync</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">syncUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">await</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">awaitUninterruptibly</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Returns a new &#123;<span class="doctag">@link</span> ChannelPromise&#125; if &#123;<span class="doctag">@link</span> #isVoid()&#125; returns &#123;<span class="doctag">@code</span> true&#125; otherwise itself.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// 我们忽略这个方法吧。</span></span><br><span class="line">    <span class="function">ChannelPromise <span class="title">unvoid</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以看到，它综合了 ChannelFuture 和 Promise 中的方法，只不过通过覆写将返回值都变为 ChannelPromise 了而已，<strong>没有增加什么新的功能</strong>。</p>
+<p>小结一下，我们上面介绍了几个接口，Future 以及它的子接口 ChannelFuture 和 Promise，然后是 ChannelPromise 接口同时继承了 ChannelFuture 和 Promise。</p>
+<p>我把这几个接口的主要方法列在一起，这样大家看得清晰些：</p>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/7.png" alt="4"></p>
+<p>接下来，我们需要来一个实现类，这样才能比较直观地看出它们是怎么使用的，因为上面的这些都是接口定义，具体还得看实现类是怎么工作的。</p>
+<p>下面，我们来介绍下 <strong>DefaultPromise</strong> 这个实现类，这个类很常用，它的源码也不短，我们先介绍几个关键的内容，然后介绍一个示例使用。</p>
+<p>首先，我们看下它有哪些属性：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DefaultPromise</span>&lt;<span class="title">V</span>&gt; <span class="keyword">extends</span> <span class="title">AbstractFuture</span>&lt;<span class="title">V</span>&gt; <span class="keyword">implements</span> <span class="title">Promise</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line">	  <span class="comment">// 保存执行结果</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> Object result;</span><br><span class="line">    <span class="comment">// 执行任务的线程池，promise 持有 executor 的引用，这个其实有点奇怪了</span></span><br><span class="line">    <span class="comment">// 因为“任务”其实没必要知道自己在哪里被执行的</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> EventExecutor executor;</span><br><span class="line">	  <span class="comment">// 监听者，回调函数，任务结束后（正常或异常结束）执行</span></span><br><span class="line">    <span class="keyword">private</span> Object listeners;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 等待这个 promise 的线程数(调用sync()/await()进行等待的线程数量)</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">short</span> waiters;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 是否正在唤醒等待线程，用于防止重复执行唤醒，不然会重复执行 listeners 的回调方法</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">boolean</span> notifyingListeners;</span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>可以看出，此类实现了 Promise，但是没有实现 ChannelFuture，所以它和 Channel 联系不起来。</p>
+<p>别急，我们后面会碰到另一个类 DefaultChannelPromise 的使用，这个类是综合了 ChannelFuture 和 Promise 的，但是它的实现其实大部分都是继承自这里的 DefaultPromise 类的。</p>
+</blockquote>
+<p>说完上面的属性以后，大家可以看下 <code>setSuccess(V result)</code> 、<code>trySuccess(V result)</code> 和 <code>setFailure(Throwable cause)</code> 、 <code>tryFailure(Throwable cause)</code> 这几个方法：</p>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/8.png" alt="8"></p>
+<blockquote>
+<p>看出 setSuccess(result) 和 trySuccess(result) 的区别了吗？</p>
+</blockquote>
+<p>上面几个方法都非常简单，先设置好值，然后执行监听者们的回调方法。notifyListeners() 方法感兴趣的读者也可以看一看，不过它还涉及到 Netty 线程池的一些内容，我们还没有介绍到线程池，这里就不展开了。上面的代码，在 setSuccess0 或 setFailure0 方法中都会唤醒阻塞在 sync() 或 await() 的线程</p>
+<p>另外，就是可以看下 sync() 和 await() 的区别，其他的我觉得随便看看就好了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Promise&lt;V&gt; <span class="title">sync</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    await();</span><br><span class="line">    <span class="comment">// 如果任务是失败的，重新抛出相应的异常</span></span><br><span class="line">    rethrowIfFailed();</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来，我们来写个实例代码吧：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 构造线程池</span></span><br><span class="line">    EventExecutor executor = <span class="keyword">new</span> DefaultEventExecutor();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建 DefaultPromise 实例</span></span><br><span class="line">    Promise promise = <span class="keyword">new</span> DefaultPromise(executor);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 下面给这个 promise 添加两个 listener</span></span><br><span class="line">    promise.addListener(<span class="keyword">new</span> GenericFutureListener&lt;Future&lt;Integer&gt;&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">operationComplete</span><span class="params">(Future future)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (future.isSuccess()) &#123;</span><br><span class="line">                System.out.println(<span class="string">"任务结束，结果："</span> + future.get());</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                System.out.println(<span class="string">"任务失败，异常："</span> + future.cause());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;).addListener(<span class="keyword">new</span> GenericFutureListener&lt;Future&lt;Integer&gt;&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">operationComplete</span><span class="params">(Future future)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">            System.out.println(<span class="string">"任务结束，balabala..."</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 提交任务到线程池，五秒后执行结束，设置执行 promise 的结果</span></span><br><span class="line">    executor.submit(<span class="keyword">new</span> Runnable() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Thread.sleep(<span class="number">5000</span>);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 设置 promise 的结果</span></span><br><span class="line">            <span class="comment">// promise.setFailure(new RuntimeException());</span></span><br><span class="line">            promise.setSuccess(<span class="number">123456</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// main 线程阻塞等待执行结果</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        promise.sync();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运行代码，两个 listener 将在 5 秒后将输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">任务结束，结果：123456</span><br><span class="line">任务结束，balabala...</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>读者这里可以试一下 sync() 和 await() 的区别，在任务中调用 promise.setFailure(new RuntimeException()) 试试看。</p>
+</blockquote>
+<p>上面的代码中，大家可能会对线程池 executor 和 promise 之间的关系感到有点迷惑。读者应该也要清楚，具体的任务不一定就要在这个 executor 中被执行。任务结束以后，需要调用 promise.setSuccess(result) 作为通知。</p>
+<p>通常来说，promise 代表的 future 是不需要和线程池搅在一起的，future 只关心任务是否结束以及任务的执行结果，至于是哪个线程或哪个线程池执行的任务，future 其实是不关心的。</p>
+<p>不过 Netty 毕竟不是要创建一个通用的线程池实现，而是和它要处理的 IO 息息相关的，所以我们只不过要理解它就好了。</p>
+<p>这节就说这么多吧，我们回过头来再看一下这张图，看看大家是不是看懂了这节内容：</p>
+<p><img src="https://www.javadoop.com/blogimages/netty-source/6.png" alt="6"></p>
+<p>我们就说说上图左边的部分吧，虽然我们还不知道 bind() 操作中具体会做什么工作，但是我们应该可以猜出一二。</p>
+<p>显然，main 线程调用 b.bind(port) 这个方法会返回一个 ChannelFuture，bind() 是一个异步方法，当某个执行线程执行了真正的绑定操作后，那个执行线程一定会标记这个 future 为成功（我们假定 bind 会成功），然后这里的 sync() 方法（main 线程）就会返回了。</p>
+<blockquote>
+<p>如果 bind(port) 失败，我们知道，sync() 方法会将异常抛出来，然后就会执行到 finally 块了。 </p>
+</blockquote>
+<p>一旦绑定端口 bind 成功，进入下面一行，f.channel() 方法会返回该 future 关联的 channel。</p>
+<p>channel.closeFuture() 也会返回一个 ChannelFuture，然后调用了 sync() 方法，这个 sync() 方法返回的条件是：<strong>有其他的线程关闭了 NioServerSocketChannel</strong>，往往是因为需要停掉服务了，然后那个线程会设置 future 的状态（ setSuccess(result) 或 setFailure(cause) ），这个 sync() 方法才会返回。</p>
+<p>这节就到这里，希望大家对 Netty 中的异步编程有些了解，后续碰到源码的时候能知道是怎么使用的了。</p>
+
+    </div>
+  </div>
+  
+    <div class="copy-right">
+      <div class="markdown-body">
+        <blockquote>
+        
+        
+          本文作者 : iathanasy <br/>
+        
+        原文链接 : <a href="">https://iathanasy.github.io/2020/09/19/Netty+源码解析（三）_+Netty+的+Future+和+Promise/</a><br>
+        版权声明 : 本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！
+        </blockquote>
+      </div>
+    </div>
+  
+  
+  
+
+  
+
+  <div class="article-footer">
+    <div class="article-meta pull-left">
+      <span>
+        
+          <i class="iconfont icon-06tags"></i>标签: 
+          
+          <span class="span--tag">
+            <a href="/tags/Java/">
+              #Java
+            </a>
+          </span>
+          
+          <span class="span--tag">
+            <a href="/tags/Netty/">
+              #Netty
+            </a>
+          </span>
+          
+        
+      </span>
+    </div>
+    <div class="article-meta pull-right">
+    </div>
+  </div>
+</div>
+
+
+  <aside id="sidebar">
+    <p id="sidebar-header"></p>
+    <ol id="sidebar-toc"></ol>
+  </aside>
+  <script async>setTimeout(generateToc, 10);</script>
+
+
+  <nav class="post-navigation">
+    
+      <div class="nav-pre">
+        <i class="iconfont icon-prev"></i>
+        上一篇:
+        <a href="/2020/09/19/Netty+源码解析（二）+-+Netty+中的+Channel/" target="_self">Netty 源码解析（二） - Netty 中的 Channel</a>
+      </div>
+    
+    
+      <div class="nav-next">
+        下一篇:
+        <a href="/2020/09/19/Netty+源码解析（四）_+Netty+的+ChannelPipeline/" target="_self">Netty 源码解析（四）- Netty 的 ChannelPipeline</a>
+        <i class="iconfont icon-next"></i>
+      </div>
+    
+  </nav>
+
+   
+
+  
+    <script defer>
+const valineAPI = (() => {
+  try {
+    AV.init("Hyq9wkH495DgNHWhDQCOfQSp-gzGzoHsz", "WaR7nrzhliHj9aVwdQzkdlGd");
+  } catch(error) {}
+  const isExist = (identity) => {
+    identity = identity || getRealPath();
+    let query = new AV.Query('Timer');
+    return new Promise((resolve, reject) => {
+      query.equalTo("identity", identity);
+      query.find().then(results => {
+        resolve(results.length > 0);
+      }, error => reject(error));
+    })
+  }
+
+  const _get = (identity) => {
+    let query = null;
+    if(identity && identity instanceof Array){
+      let querys = [];
+      for(let i = 0; i < identity.length; ++i) {
+        querys[i] = new AV.Query('Timer');
+        querys[i].equalTo('identity', identity[i]);
+      }
+      query = AV.Query.or.apply(null ,querys);
+    } else {
+      identity = identity || getRealPath();
+      query = new AV.Query("Timer");
+      query.equalTo("identity", identity);
+    }
+
+    return new Promise((resolve, reject) => {
+      query.find()
+      .then(results => resolve(results))
+      .catch(error => reject(error))
+    })
+  }
+
+  const create = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let Todo = AV.Object.extend('Timer');
+      let todo = new Todo();
+      todo.set("times", 1);
+      todo.set("identity", identity);
+      todo.save().then(res => resolve(true), error => reject(error));
+    })
+  }
+
+  const update = (identity) => {
+    identity = identity || getRealPath();
+    return new Promise((resolve, reject) => {
+      let query = new AV.Query('Timer');
+      query.equalTo("identity", identity);
+      query.find().then(todos => {
+        todos.forEach(todo => {
+          todo.set("times", todo.attributes.times + 1);
+        });
+        return AV.Object.saveAll(todos);
+      }).then(todos => resolve(true), error => reject(error));
+    })
+  }
+
+  return {
+    isExist,
+    _get,
+    update,
+    create
+  }
+})()
+
+const calcAndWriteTimes = () => {
+  let isPost = true;
+
+  let timerAllDOM = document.querySelectorAll(".article-timer");
+
+  if(isPost) {
+    let identity = timerAllDOM[0].getAttribute("data-identity");
+    valineAPI.isExist(identity)
+    .then(exist => {
+      if(exist) {
+        return valineAPI.update(identity);
+      }
+      return new Promise(resolve => resolve(true));
+    })
+    .then( succuess => valineAPI._get(identity))
+    .then( result => timerAllDOM[0].innerText = result[0].attributes.times)
+    .catch(error => console.log(error.message))
+    return ;
+  }
+
+  let timerDOMCache = {};
+
+  for(let timerDOM of timerAllDOM) {
+    let identity = timerDOM.getAttribute("data-identity");
+    if(timerDOMCache.hasOwnProperty(identity)){
+      timerDOMCache[identity].dom.push(timerDOM);
+    }else{
+      timerDOMCache[identity] = {
+        dom: [timerDOM],
+        times: undefined
+      };
+    }
+  }
+
+  let identities = Object.keys(timerDOMCache);
+  valineAPI._get(identities).then(results => {
+    for(let result of results) {
+      let {identity, times} = result.attributes;
+      timerDOMCache[identity].times = times;
+      timerDOMCache[identity].dom.map(item => item.innerText = times);
+    }
+    for(let identity of identities) {
+      if(timerDOMCache[identity].times){
+        continue;
+      }
+      timerDOMCache[identity].dom.map(item => item.innerText = 1);
+      valineAPI.create(identity);
+    }
+  }).catch(error => console.log(error.message))
+}
+
+if(true){
+  calcAndWriteTimes();
+}
+</script>
+   
+
+</div>
+
+
+      <footer>
+  <p class="site-info">
+    博客已运行<span id="time-to-now"></span><span class="my-face">(●'◡'●)ﾉ♥</span>
+    <br>
+    特别鸣谢：
+			<a href="https://github.com/">GitHub</a> |
+			<a href="https://hexo.io">Hexo</a> |
+			<a href="https://github.com/dongyuanxin/theme-bmw">BMW</a> 
+    <br>
+    
+  </p>
+</footer>
+
+
+
+<script>
+const timeToNowDOM = document.querySelector("#time-to-now");
+const startTimestamp = new Date(2019, 0, 7).getTime();
+
+const updateTimeStr = () => {
+  let offset = parseInt(
+      (new Date().getTime() - startTimestamp) / 1000,
+      10
+    ),
+    day = Math.floor(offset / 86400),
+    hour = Math.floor((offset % 86400) / 3600),
+    minute = Math.floor(((offset % 86400) % 3600) / 60),
+    second = Math.floor(((offset % 86400) % 3600) % 60);
+  timeToNowDOM.innerHTML =
+    day + "天" + hour + "小时" + minute + "分钟" + second + "秒";
+  setTimeout(updateTimeStr, 500);
+}
+
+setTimeout(updateTimeStr, 500);
+</script>
+
+
+      <div class="back-to-top hidden">
+  <span>
+    <i class="iconfont icon-60"></i><span></span>%
+  </span>
+</div>
+
+<script>
+const updateIconToTop = percent => {
+  let dom = document.querySelector(".back-to-top span span");
+  dom.innerText = percent;
+  if(percent < 1) {
+    document.querySelector(".back-to-top").className = "back-to-top hidden";
+  } else {
+    document.querySelector(".back-to-top").className = "back-to-top";
+  }
+}
+
+const handleScoll = () => {
+  let isRunning = false;
+  return () => {
+    if (isRunning) return;
+    isRunning = true;
+    window.requestAnimationFrame(timestamp => {
+      let scrollTop =
+          document.documentElement.scrollTop || document.body.scrollTop,
+        scrollHeight =
+          document.documentElement.scrollHeight ||
+          document.body.scrollHeight,
+        clientHeight =
+          document.documentElement.clientHeight ||
+          document.body.clientHeight;
+      isRunning = false;
+      if (scrollTop <= 1) {
+        updateIconToTop(0);
+        return;
+      }
+      if (scrollTop + clientHeight >= scrollHeight) {
+        updateIconToTop(100);
+      } else {
+        updateIconToTop(parseInt(
+          100 * scrollTop / (scrollHeight - clientHeight),
+          10
+        ));
+      }
+    });
+  };
+}
+
+const backToTop = () => {
+  let scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop,
+    delay = 10,
+    time = 200;
+  if (scrollTop <= 20) {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    return;
+  }
+  let step = Math.ceil(scrollTop * delay / time);
+  let timer = setInterval(() => {
+    scrollTop =
+      document.documentElement.scrollTop || document.body.scrollTop;
+    if (scrollTop - step <= 0) {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      clearInterval(timer);
+    } else {
+      document.documentElement.scrollTop = scrollTop - step;
+      document.body.scrollTop = scrollTop - step;
+    }
+  }, delay);
+}
+
+document.addEventListener("scroll", handleScoll(), false);
+
+document.querySelector(".back-to-top").addEventListener("click", backToTop, false);
+
+</script>
+
+    </div>
+
+    
+      <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+<script>
+  (() => {
+    const mathjaxConfig = {
+      showProcessingMessages: false, //关闭js加载过程信息
+      messageStyle: "none", //不显示信息
+      jax: ["input/TeX", "output/HTML-CSS"],
+      tex2jax: {
+        inlineMath: [["$", "$"], ["\\(", "\\)"]], //行内公式选择符
+        displayMath: [["$$", "$$"], ["\\[", "\\]"]], //段内公式选择符
+        skipTags: ["script", "noscript", "style", "textarea", "pre", "code", "a"] //避开某些标签
+      },
+      "HTML-CSS": {
+        availableFonts: ["STIX", "TeX"], //可选字体
+        showMathMenu: false //关闭右击菜单显示
+      }
+    }
+
+    let mathjaxInterval = setInterval(() => {
+      if(!window.MathJax){
+        return;
+      }
+      window.MathJax.Hub.Config(mathjaxConfig)
+      window.MathJax.Hub.Queue(["Typeset", MathJax.Hub, document.getElementById('app')])
+
+      clearInterval(mathjaxInterval)
+    }, 10)    
+  })()
+</script>
+    
+
+    <script src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js" async></script>
+<script async>
+  let fancyTimer = setInterval(function(){
+    if(!window.$){
+      return;
+    }
+    $(document).ready(function() {
+      $(".post img").each(function () {
+        if($(this).parent().get(0).tagName.toLowerCase() === "a") {
+          return;
+        }
+        // $(this).attr("data-fancybox", "gallery"); // if you add 'data-fancybox', img will display after showed
+        var element = document.createElement("a");
+        $(element).attr("data-fancybox", "gallery");
+        $(element).attr("href", $(this).attr("src"));
+        $(this).wrap(element);
+      });
+      
+      clearInterval(fancyTimer);
+    });
+  }, 10);
+</script>
+
+    
+  </body>
+
+</html>
